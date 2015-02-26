@@ -8,7 +8,7 @@ So it automatically creates FieldMap function for your struct.
 ## What do I need to do, so autobindings does the magic ?
 Just add this line to all of your files which has struct and for which you want to create a FieldMap function
 
-```go
+```
 //go:generate autobindings <file_name>
 ```
 
