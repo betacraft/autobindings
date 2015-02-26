@@ -49,7 +49,7 @@ func generateFieldMap(fileName string) {
 	for _, d := range f.Scope.Objects {
 		ts, ok := d.Decl.(*ast.TypeSpec)
 		if !ok {
-			panic(fmt.Sprintf("Unknown type without TypeSec: %v", d))
+			continue
 		}
 		switch ts.Type.(type) {
 		case *ast.StructType:
