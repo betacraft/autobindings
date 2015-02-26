@@ -5,7 +5,7 @@ Autobindings is a simple extention to the amazing library [Binding](https://gith
 ## What autobinding does ?
 So it automatically creates FieldMap function for your struct. 
 
-## What do I need to do, so autobindings does the magic ?
+## How to use ?
 Just add this line to all of your files which has struct and for which you want to create a FieldMap function
 
 ```
