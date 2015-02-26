@@ -33,4 +33,4 @@ Using the power of go generate :)
 
 ## Happy to help
 akshay@rainingclouds.com
-@akshay_deo
+[@akshay_deo](https://twitter.com/akshay_deo)
