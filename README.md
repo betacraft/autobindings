@@ -27,6 +27,7 @@ go install github.com/rainingclouds/autobindings
 
 ## How does it happens ?
 Using the power of go generate :)
+It creates <struct_name>_bindings.go for every struct in the given file. This file contains FieldMap function for that struct. This function is used by [Binding](https://github.com/mholt/binding) library to perform the mapping.
 
 ## Okay so what is missing ?
 * It doesn't support Embedded fields yet.
