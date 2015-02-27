@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
+	"io/ioutil"
+	"log"
 	"strings"
 	"text/template"
 
@@ -22,25 +24,88 @@ import(
 	"github.com/mholt/binding"
 )
 
-func ({{.variableName}} *{{.structName}}) FieldMap() binding.FieldMap {
+type {{.structName}}Create struct {
+	{{range $field, $mapping := .mappings}}{{if eq $mapping.Create true }}
+	{{$field}} {{$mapping.Type}} {{$mapping.RestrictedTags}}{{end}}{{end}}
+}
+
+type {{.structName}}Update struct {
+	{{range $field, $mapping := .mappings}}{{if eq $mapping.Update true }}
+	{{$field}} {{$mapping.Type}} {{$mapping.RestrictedTags}}{{end}}{{end}}
+}
+
+func ({{.variableName}} *{{.structName}}Create) FieldMap() binding.FieldMap {
+	return binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}{{if eq $mapping.Create true }}
+			&{{$vname}}.{{$field}}: binding.Field{
+				Form:"{{$mapping.JSONTags}}",
+				Required: {{$mapping.Required}},
+			},{{end}}{{end}}
+	}
+}
+
+func (t {{.structName}}Create) String() string {
+	jb, err := json.Marshal(t)
+	if err != nil {
+		return ""
+	}
+	return string(jb)
+}
+
+func ({{.variableName}} *{{.structName}}Update) FieldMap() binding.FieldMap {
+	return binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}{{if eq $mapping.Update true }}
+			&{{$vname}}.{{$field}}: binding.Field{
+				Form:"{{$mapping.JSONTags}}",
+				Required: {{$mapping.Required}},
+			},{{end}}{{end}}
+	}
+}
+
+func (t {{.structName}}Update) String() string {
+	jb, err := json.Marshal(t)
+	if err != nil {
+		return ""
+	}
+	return string(jb)
+}`
+
+var baseFieldMap = `func ({{.variableName}} *{{.structName}}) FieldMap() binding.FieldMap {
 	return binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}
-			&{{$vname}}.{{$field}}: "{{$mapping}}",{{end}}
+			&{{$vname}}.{{$field}}: binding.Field{
+				Form:"{{$mapping.JSONTags}}",
+				Required: {{$mapping.Required}},
+			},{{end}}
 	}
 }`
+
+type Mapping struct {
+	Name           string
+	Type           string
+	JSONTags       string
+	RestrictedTags string
+	Required       bool
+	Create         bool
+	Update         bool
+}
 
 func main() {
 	args := os.Args[1:]
 	if len(args) < 1 {
-		fmt.Println("Usage : bindings {file_name} \n example: bindings file.go")
+		log.Println("Usage : autobindings {file_name} \n example: autobindings file.go")
 		return
 	}
+	log.Println("autobindings started. file:", args[0])
 	generateFieldMap(args[0])
+	log.Println("autobindings finished. file:", args[0])
 }
 
 func generateFieldMap(fileName string) {
 	fset := token.NewFileSet() // positions are relative to fset
 	// Parse the file given in arguments
 	f, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
+	if err != nil {
+		panic(err)
+	}
+	b, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		panic(err)
 	}
@@ -61,16 +126,19 @@ func generateFieldMap(fileName string) {
 	packageName := f.Name
 	for structName, fields := range structMap {
 		variableName := strings.ToLower(string(structName[0]))
-		mappings := map[string]string{}
+		mappings := map[string]*Mapping{}
 		for _, field := range fields.List {
 			if len(field.Names) == 0 {
 				continue
 			}
 			name := field.Names[0].String()
+			fieldType := string(b[field.Type.Pos()-1 : field.Type.End()-1])
+			mappings[name] = &Mapping{Type: fieldType}
 			// if tag for field doesn't exists, create one
 			if field.Tag == nil {
-				mappings[name] = name
-			} else if strings.Contains(field.Tag.Value, "json") {
+				mappings[name].JSONTags = name
+				mappings[name].RestrictedTags = fmt.Sprintf("`json:\"%s\"`", name)
+			} else if strings.Contains(field.Tag.Value, "json") || strings.Contains(field.Tag.Value, "binding") {
 				tags := strings.Replace(field.Tag.Value, "`", "", -1)
 				for _, tag := range strings.Split(tags, " ") {
 					if strings.Contains(tag, "json") {
@@ -79,18 +147,32 @@ func generateFieldMap(fileName string) {
 						if mapping == "-" {
 							continue
 						}
-						mappings[name] = mapping
+						mappings[name].JSONTags = mapping
+						mappings[name].RestrictedTags = fmt.Sprintf("`json:\"%s\"`", mapping)
+					} else if strings.Contains(tag, "binding") {
+						mapping := strings.Replace(tag, "binding:\"", "", -1)
+						mapping = strings.Replace(mapping, "\"", "", -1)
+						if strings.Contains(mapping, "required") {
+							mappings[name].Required = true
+						}
+						if strings.Contains(mapping, "create") {
+							mappings[name].Create = true
+						}
+						if strings.Contains(mapping, "update") {
+							mappings[name].Update = true
+						}
 					}
 				}
 			} else {
 				// I will handle other cases later
-				mappings[name] = name
+				mappings[name].JSONTags = name
+				mappings[name].RestrictedTags = fmt.Sprintf("`json:\"%s\"`", name)
 			}
 		}
 		// opening file for writing content
 		writer, err := os.Create(fmt.Sprintf("%s_bindings.go", strings.ToLower(structName)))
 		if err != nil {
-			fmt.Printf("Error opening file %v", err)
+			log.Printf("Error opening file %v", err)
 			panic(err)
 		}
 		defer writer.Close()
@@ -100,7 +182,8 @@ func generateFieldMap(fileName string) {
 			"packageName":  packageName,
 			"variableName": variableName,
 			"structName":   structName,
-			"mappings":     mappings})
+			"mappings":     mappings,
+		})
 		if err != nil {
 			panic(err)
 		}
