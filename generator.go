@@ -2,15 +2,15 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/format"
-	"strings"
-	"text/template"
-
 	"go/parser"
 	"go/token"
 	"os"
+	"strings"
+	"text/template"
 )
 
 var bindingsFile = `package {{.packageName}}
@@ -29,15 +29,21 @@ func ({{.variableName}} *{{.structName}}) FieldMap() binding.FieldMap {
 }`
 
 func main() {
-	args := os.Args[1:]
-	if len(args) < 1 {
-		fmt.Println("Usage : bindings {file_name} \n example: bindings file.go")
+
+	prnt := flag.Bool("print", false, "Output In Console")
+	filename := flag.String("file", "", "Input file")
+
+	flag.Parse()
+
+	if *filename == "" {
+		fmt.Println("Usage : bindings {file_name}\nExample: bindings file.go")
 		return
 	}
-	generateFieldMap(args[0])
+
+	generateFieldMap(*filename, *prnt)
 }
 
-func generateFieldMap(fileName string) {
+func generateFieldMap(fileName string, printOnConsole bool) {
 	fset := token.NewFileSet() // positions are relative to fset
 	// Parse the file given in arguments
 	f, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
@@ -87,13 +93,6 @@ func generateFieldMap(fileName string) {
 				mappings[name] = name
 			}
 		}
-		// opening file for writing content
-		writer, err := os.Create(fmt.Sprintf("%s_bindings.go", strings.ToLower(structName)))
-		if err != nil {
-			fmt.Printf("Error opening file %v", err)
-			panic(err)
-		}
-		defer writer.Close()
 		content := new(bytes.Buffer)
 		t := template.Must(template.New("bindings").Parse(bindingsFile))
 		err = t.Execute(content, map[string]interface{}{
@@ -108,6 +107,17 @@ func generateFieldMap(fileName string) {
 		if err != nil {
 			panic(err)
 		}
+		if printOnConsole {
+			fmt.Println(string(finalContent))
+			return
+		}
+		// opening file for writing content
+		writer, err := os.Create(fmt.Sprintf("%s_bindings.go", strings.ToLower(structName)))
+		if err != nil {
+			fmt.Printf("Error opening file %v", err)
+			panic(err)
+		}
+		defer writer.Close()
 		writer.WriteString(string(finalContent))
 	}
 }
