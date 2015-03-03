@@ -9,7 +9,7 @@ So it automatically creates FieldMap function for your struct.
 Just add this line to all of your files which has struct and for which you want to create a FieldMap function
 
 ```
-//go:generate autobindings <file_name>
+//go:generate autobindings -file <file_name>
 ```
 
 Or
@@ -42,7 +42,7 @@ import (
   "github.com/mholt/binding"
 )
 
-func (i *Item) FieldMap() binding.FieldMap {
+func (i Item) FieldMap() binding.FieldMap {
   return binding.FieldMap{
     &i.A: "A",
     &i.B: "B",
