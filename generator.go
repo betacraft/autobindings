@@ -22,7 +22,7 @@ import(
 	"github.com/mholt/binding"
 )
 
-func ({{.variableName}} *{{.structName}}) FieldMap() binding.FieldMap {
+func ({{.variableName}} {{.structName}}) FieldMap() binding.FieldMap {
 	return binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}
 			&{{$vname}}.{{$field}}: "{{$mapping}}",{{end}}
 	}
