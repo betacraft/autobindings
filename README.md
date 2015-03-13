@@ -1,5 +1,7 @@
 # Autobindings 
 
+[![Join the chat at https://gitter.im/rainingclouds/autobindings](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/rainingclouds/autobindings?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Autobindings is a simple extention to the amazing library [Binding](https://github.com/mholt/binding). So binding is a reflectionless data binding for Go's net/http. For that developer has to write a FieldMap function which is used by this library to map the incoming JSON from the request to the struct fields.
 
 ## What autobinding does ?
