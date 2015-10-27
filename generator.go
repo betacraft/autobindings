@@ -117,7 +117,7 @@ func generateFieldMap(fileName string, printOnConsole bool) {
 			fmt.Printf("Error opening file %v", err)
 			panic(err)
 		}
-		defer writer.Close()
 		writer.WriteString(string(finalContent))
+		writer.Close()
 	}
 }
