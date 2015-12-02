@@ -23,9 +23,20 @@ import(
 )
 
 func ({{.variableName}} {{.structName}}) FieldMap() binding.FieldMap {
-	return binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}
+	b := binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}
 			&{{$vname}}.{{$field}}: "{{$mapping}}",{{end}}
+			}
+
+	{{$vname := .variableName}}
+	{{range $field, $type := .embeds}}
+	var i interface{} = {{$vname}}.{{$type}}
+	if m, ok := i.(binding.FieldMap); ok {
+			for k, v := range m.FieldMap() {
+				b[k] = v
+			}
 	}
+	{{end}}
+	return b
 }`
 
 func main() {
@@ -68,8 +79,10 @@ func generateFieldMap(fileName string, printOnConsole bool) {
 	for structName, fields := range structMap {
 		variableName := strings.ToLower(string(structName[0]))
 		mappings := map[string]string{}
+		embeds := []ast.Expr{}
 		for _, field := range fields.List {
 			if len(field.Names) == 0 {
+				embeds = append(embeds, field.Type)
 				continue
 			}
 			name := field.Names[0].String()
@@ -99,7 +112,8 @@ func generateFieldMap(fileName string, printOnConsole bool) {
 			"packageName":  packageName,
 			"variableName": variableName,
 			"structName":   structName,
-			"mappings":     mappings})
+			"mappings":     mappings,
+			"embeds":       embeds})
 		if err != nil {
 			panic(err)
 		}
