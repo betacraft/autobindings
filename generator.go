@@ -36,7 +36,7 @@ func main() {
 	flag.Parse()
 
 	if *filename == "" {
-		fmt.Println("Usage : bindings {file_name}\nExample: bindings file.go")
+		fmt.Println("Usage : bindings -file {file_name}\nExample: bindings -file file.go")
 		return
 	}
 
