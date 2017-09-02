@@ -23,10 +23,29 @@ import(
 )
 
 func ({{.variableName}} {{.structName}}) FieldMap() binding.FieldMap {
-	return binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}
+	binding_fmap := binding.FieldMap{ {{$vname := .variableName}}{{range $field, $mapping := .mappings}}
 			&{{$vname}}.{{$field}}: "{{$mapping}}",{{end}}
+			}
+
+
+	{{ if .hasEmbeds }}
+	type FieldMap interface {
+		FieldMap() binding.FieldMap
 	}
-}`
+	var iface interface{}
+	{{$vname := .variableName}}
+	{{range $field, $type := .embeds}}
+	iface = {{$vname}}.{{$type}}
+	if m, ok := iface.(FieldMap); ok {
+			for k, v := range m.FieldMap() {
+				binding_fmap[k] = v
+			}
+	}
+	{{end}}
+	{{end}}
+	return binding_fmap
+}
+`
 
 func main() {
 
@@ -68,8 +87,12 @@ func generateFieldMap(fileName string, printOnConsole bool) {
 	for structName, fields := range structMap {
 		variableName := strings.ToLower(string(structName[0]))
 		mappings := map[string]string{}
+		embeds := []ast.Expr{}
+		hasEmbeds := false
 		for _, field := range fields.List {
 			if len(field.Names) == 0 {
+				hasEmbeds = true
+				embeds = append(embeds, field.Type)
 				continue
 			}
 			name := field.Names[0].String()
@@ -99,7 +122,9 @@ func generateFieldMap(fileName string, printOnConsole bool) {
 			"packageName":  packageName,
 			"variableName": variableName,
 			"structName":   structName,
-			"mappings":     mappings})
+			"mappings":     mappings,
+			"embeds":       embeds,
+			"hasEmbeds":    hasEmbeds})
 		if err != nil {
 			panic(err)
 		}
